@@ -1,0 +1,16 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": "../../..",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "testEnvironment": "node",
+  "roots": ["<rootDir>/apps/chat-gateway/test"],
+  "moduleNameMapper": {
+    "^@app/common(.*)$": "<rootDir>/libs/common/src$1",
+    "^@app/db(.*)$": "<rootDir>/libs/db/src$1",
+    "^@app/redis(.*)$": "<rootDir>/libs/redis/src$1"
+  },
+  "maxWorkers": 1
+}

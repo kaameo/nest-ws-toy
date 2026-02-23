@@ -35,10 +35,9 @@ export class MessagesController {
   }
 
   @Post('read')
-  @UsePipes(new ZodValidationPipe(UpdateReadCursorSchema))
   async updateReadCursor(
     @Param('roomId', ParseUUIDPipe) roomId: string,
-    @Body() dto: UpdateReadCursorDto,
+    @Body(new ZodValidationPipe(UpdateReadCursorSchema)) dto: UpdateReadCursorDto,
     @Request() req: any,
   ) {
     await this.messagesService.updateReadCursor(roomId, req.user.userId, dto.lastReadMessageId);

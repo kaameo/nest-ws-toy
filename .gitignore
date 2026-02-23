@@ -30,9 +30,7 @@ yarn-error.log*
 coverage/
 
 # OMC state (session-specific)
-.omc/state/
-.omc/logs/
-.omc/notepad.md
+.omc/
 
 # TypeScript
 *.js.map
