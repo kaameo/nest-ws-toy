@@ -1,7 +1,7 @@
 import { Injectable, Inject, OnModuleInit, Logger } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
-import { KAFKA_PRODUCER } from './kafka-producer.module';
+import { KAFKA_PRODUCER } from './kafka.constants';
 
 @Injectable()
 export class KafkaProducerService implements OnModuleInit {

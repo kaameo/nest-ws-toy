@@ -16,6 +16,6 @@ export class RoomMember {
   @CreateDateColumn({ name: 'joined_at' })
   joinedAt: Date;
 
-  @Column({ name: 'last_read_message_id', nullable: true })
+  @Column({ name: 'last_read_message_id', type: 'varchar', length: 26, nullable: true })
   lastReadMessageId: string | null;
 }

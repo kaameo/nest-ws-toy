@@ -3,8 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { KAFKA_CLIENT_ID } from '@app/common';
 import { KafkaProducerService } from './kafka-producer.service';
-
-export const KAFKA_PRODUCER = 'KAFKA_PRODUCER';
+import { KAFKA_PRODUCER } from './kafka.constants';
 
 @Module({
   imports: [

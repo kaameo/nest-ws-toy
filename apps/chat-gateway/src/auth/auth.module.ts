@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { JwtModule, JwtService } from '@nestjs/jwt';
+import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -24,6 +24,6 @@ import { WsJwtGuard } from './ws-jwt.guard';
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, WsJwtGuard],
-  exports: [AuthService, JwtService, WsJwtGuard],
+  exports: [AuthService, JwtModule, WsJwtGuard],
 })
 export class AuthModule {}

@@ -16,7 +16,7 @@ export class Room {
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @Column({ name: 'last_message_id', nullable: true })
+  @Column({ name: 'last_message_id', type: 'varchar', length: 26, nullable: true })
   lastMessageId: string | null;
 
   @Column({ name: 'last_message_at', type: 'timestamptz', nullable: true })
