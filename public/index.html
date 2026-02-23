@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>채팅 테스트 클라이언트</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #1a1a2e;
+      --panel:     #16213e;
+      --accent:    #0f3460;
+      --highlight: #e94560;
+      --text:      #e0e0f0;
+      --muted:     #7a7a9a;
+      --border:    #2a2a4a;
+      --own-msg:   #0f3460;
+      --other-msg: #1e1e3e;
+      --success:   #2ecc71;
+      --fail:      #e74c3c;
+      --radius:    10px;
+      --font:      'Segoe UI', system-ui, sans-serif;
+    }
+
+    html, body { height: 100%; font-family: var(--font); background: var(--bg); color: var(--text); }
+
+    /* ── Layout ─────────────────────────────────────────── */
+    #app {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      grid-template-columns: 260px 1fr;
+      grid-template-areas:
+        "auth   auth"
+        "rooms  chat"
+        "status status";
+      height: 100vh;
+      gap: 0;
+    }
+
+    /* ── Auth Panel ─────────────────────────────────────── */
+    #auth-panel {
+      grid-area: auth;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    #auth-panel h2 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--highlight);
+      white-space: nowrap;
+      margin-right: 4px;
+    }
+
+    .auth-inputs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      flex: 1;
+    }
+
+    .auth-inputs input {
+      flex: 1;
+      min-width: 140px;
+    }
+
+    #user-info {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+    }
+
+    #user-info.visible { display: flex; }
+
+    #user-badge {
+      background: var(--accent);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    #token-display {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: monospace;
+      max-width: 280px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ── Rooms Panel ─────────────────────────────────────── */
+    #rooms-panel {
+      grid-area: rooms;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-section {
+      padding: 14px 14px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-section h3 {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .room-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+
+    .room-item {
+      padding: 9px 14px;
+      cursor: pointer;
+      border-radius: 6px;
+      margin: 2px 8px;
+      font-size: 14px;
+      transition: background .15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .room-item:hover { background: var(--accent); }
+    .room-item.active { background: var(--highlight); }
+
+    .room-item .room-icon {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .room-item.active .room-icon { background: #fff; }
+
+    .room-name { font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .room-id-label { font-size: 10px; color: var(--muted); }
+
+    /* ── Chat Panel ─────────────────────────────────────── */
+    #chat-panel {
+      grid-area: chat;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    #chat-header {
+      padding: 14px 20px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #chat-header h2 { font-size: 16px; font-weight: 700; flex: 1; }
+
+    #online-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+      transition: background .3s;
+    }
+
+    #online-dot.online { background: var(--success); box-shadow: 0 0 6px var(--success); }
+
+    #message-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .msg-wrapper {
+      display: flex;
+      flex-direction: column;
+      max-width: 70%;
+    }
+
+    .msg-wrapper.own { align-self: flex-end; align-items: flex-end; }
+    .msg-wrapper.other { align-self: flex-start; }
+
+    .msg-sender {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 3px;
+      padding: 0 6px;
+    }
+
+    .msg-bubble {
+      background: var(--other-msg);
+      border-radius: var(--radius);
+      padding: 9px 14px;
+      font-size: 14px;
+      line-height: 1.5;
+      word-break: break-word;
+      position: relative;
+    }
+
+    .msg-wrapper.own .msg-bubble {
+      background: var(--own-msg);
+      border-bottom-right-radius: 3px;
+    }
+
+    .msg-wrapper.other .msg-bubble { border-bottom-left-radius: 3px; }
+
+    .msg-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 3px;
+      padding: 0 6px;
+    }
+
+    .msg-time { font-size: 10px; color: var(--muted); }
+
+    .msg-ack {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .msg-ack.accepted { background: rgba(46,204,113,.2); color: var(--success); }
+    .msg-ack.failed   { background: rgba(231,76,60,.2);  color: var(--fail); }
+    .msg-ack.pending  { background: rgba(122,122,154,.15); color: var(--muted); }
+
+    #empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      gap: 8px;
+    }
+
+    #empty-state svg { opacity: .3; }
+
+    /* ── Chat Input ─────────────────────────────────────── */
+    #chat-input-area {
+      padding: 14px 20px;
+      background: var(--panel);
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 10px;
+    }
+
+    #msg-input { flex: 1; }
+
+    /* ── Status Bar ─────────────────────────────────────── */
+    #status-bar {
+      grid-area: status;
+      background: #0d0d1f;
+      border-top: 1px solid var(--border);
+      padding: 6px 20px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .status-item { display: flex; align-items: center; gap: 5px; }
+
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .status-dot.green  { background: var(--success); box-shadow: 0 0 4px var(--success); }
+    .status-dot.red    { background: var(--fail); }
+    .status-dot.pulse  { animation: pulse 1.2s ease-in-out infinite; background: var(--highlight); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: .3; }
+    }
+
+    /* ── Shared UI ──────────────────────────────────────── */
+    input[type="text"], input[type="email"], input[type="password"] {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 13px;
+      padding: 7px 11px;
+      outline: none;
+      transition: border-color .15s;
+      width: 100%;
+    }
+
+    input:focus { border-color: var(--highlight); }
+
+    button {
+      background: var(--accent);
+      color: var(--text);
+      border: none;
+      border-radius: 6px;
+      padding: 7px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .15s, transform .1s;
+    }
+
+    button:hover  { background: var(--highlight); }
+    button:active { transform: scale(.97); }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+
+    button.primary { background: var(--highlight); }
+    button.primary:hover { background: #c73652; }
+
+    .row { display: flex; gap: 8px; align-items: center; }
+
+    /* ── Scrollbar ──────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+  </style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ── Auth Panel ── -->
+  <div id="auth-panel">
+    <h2>채팅</h2>
+
+    <div class="auth-inputs" id="auth-form">
+      <input type="email"    id="email"    placeholder="이메일" />
+      <input type="password" id="password" placeholder="비밀번호" />
+      <button onclick="register()">회원가입</button>
+      <button class="primary" onclick="login()">로그인</button>
+    </div>
+
+    <div id="user-info">
+      <span id="user-badge">—</span>
+      <span id="token-display">토큰 없음</span>
+      <button onclick="logout()" style="margin-left:auto">로그아웃</button>
+    </div>
+  </div>
+
+  <!-- ── Rooms Panel ── -->
+  <div id="rooms-panel">
+    <div class="panel-section">
+      <h3>방 만들기</h3>
+      <div class="row">
+        <input type="text" id="create-room-name" placeholder="방 이름" />
+        <button onclick="createRoom()">생성</button>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <h3>방 참가 (ID)</h3>
+      <div class="row">
+        <input type="text" id="join-room-id" placeholder="Room UUID" />
+        <button onclick="joinRoomById()">참가</button>
+      </div>
+    </div>
+
+    <div class="panel-section" style="border-bottom:none;">
+      <h3>내 방 목록</h3>
+    </div>
+    <div class="room-list" id="room-list">
+      <!-- populated dynamically -->
+    </div>
+  </div>
+
+  <!-- ── Chat Panel ── -->
+  <div id="chat-panel">
+    <div id="chat-header">
+      <div id="online-dot"></div>
+      <h2 id="room-title">방을 선택하세요</h2>
+    </div>
+
+    <div id="message-list">
+      <div id="empty-state">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span>방을 선택하면 대화가 표시됩니다</span>
+      </div>
+    </div>
+
+    <div id="chat-input-area">
+      <input type="text" id="msg-input" placeholder="메시지를 입력하세요…" onkeydown="onMsgKeydown(event)" disabled />
+      <button class="primary" id="send-btn" onclick="sendMessage()" disabled>전송</button>
+    </div>
+  </div>
+
+  <!-- ── Status Bar ── -->
+  <div id="status-bar">
+    <div class="status-item">
+      <div class="status-dot red" id="ws-dot"></div>
+      <span id="ws-label">연결 끊김</span>
+    </div>
+    <div class="status-item">
+      <div class="status-dot" id="hb-dot"></div>
+      <span id="hb-label">하트비트 대기</span>
+    </div>
+    <div class="status-item">
+      <div class="status-dot" id="presence-dot"></div>
+      <span id="presence-label">오프라인</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  /* ─── State ──────────────────────────────────────────────── */
+  const state = {
+    token: null,
+    userId: null,
+    email: null,
+    socket: null,
+    currentRoomId: null,
+    rooms: [],
+    // Map<roomId, Message[]>
+    messages: {},
+    // Set of seen clientMsgIds for dedup
+    seenClientMsgIds: new Set(),
+    heartbeatTimer: null,
+  };
+
+  const BASE = 'http://localhost:3000';
+
+  /* ─── Helpers ────────────────────────────────────────────── */
+  const $ = id => document.getElementById(id);
+
+  function formatTime(iso) {
+    const d = new Date(iso);
+    return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function truncateToken(t) {
+    if (!t) return '';
+    return t.length > 60 ? t.slice(0, 30) + '…' + t.slice(-20) : t;
+  }
+
+  async function apiFetch(path, opts = {}) {
+    const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+    if (state.token) headers['Authorization'] = `Bearer ${state.token}`;
+    const res = await fetch(BASE + path, { ...opts, headers });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.message || `HTTP ${res.status}`);
+    return body;
+  }
+
+  function notify(msg, isError = false) {
+    // Simple inline toast via status bar
+    const label = $('ws-label');
+    const prev = label.textContent;
+    label.textContent = (isError ? '❌ ' : '✅ ') + msg;
+    label.style.color = isError ? 'var(--fail)' : 'var(--success)';
+    setTimeout(() => {
+      label.textContent = prev;
+      label.style.color = '';
+    }, 3000);
+  }
+
+  /* ─── Auth ───────────────────────────────────────────────── */
+  async function register() {
+    const email = $('email').value.trim();
+    const password = $('password').value;
+    if (!email || !password) return alert('이메일과 비밀번호를 입력하세요.');
+    try {
+      await apiFetch('/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) });
+      notify('회원가입 완료! 로그인하세요.');
+    } catch (e) {
+      alert('회원가입 실패: ' + e.message);
+    }
+  }
+
+  async function login() {
+    const email = $('email').value.trim();
+    const password = $('password').value;
+    if (!email || !password) return alert('이메일과 비밀번호를 입력하세요.');
+    try {
+      const data = await apiFetch('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+      state.token = data.access_token;
+      state.email = email;
+      // Decode userId from JWT payload
+      try {
+        const payload = JSON.parse(atob(state.token.split('.')[1]));
+        state.userId = payload.sub;
+      } catch { state.userId = 'unknown'; }
+      onLoggedIn();
+    } catch (e) {
+      alert('로그인 실패: ' + e.message);
+    }
+  }
+
+  function logout() {
+    disconnectSocket();
+    Object.assign(state, {
+      token: null, userId: null, email: null,
+      currentRoomId: null, rooms: [], messages: {}, seenClientMsgIds: new Set(),
+    });
+    $('auth-form').style.display = 'flex';
+    $('user-info').classList.remove('visible');
+    $('room-list').innerHTML = '';
+    clearMessages();
+    $('room-title').textContent = '방을 선택하세요';
+    $('online-dot').classList.remove('online');
+    setInputEnabled(false);
+    updatePresence(false);
+  }
+
+  function onLoggedIn() {
+    $('auth-form').style.display = 'none';
+    $('user-info').classList.add('visible');
+    $('user-badge').textContent = state.email;
+    $('token-display').textContent = 'JWT: ' + truncateToken(state.token);
+    loadRooms();
+    connectSocket();
+  }
+
+  /* ─── Rooms ──────────────────────────────────────────────── */
+  async function loadRooms() {
+    try {
+      const rooms = await apiFetch('/rooms');
+      state.rooms = rooms;
+      renderRoomList();
+    } catch (e) {
+      console.error('방 목록 로드 실패:', e);
+    }
+  }
+
+  function renderRoomList() {
+    const list = $('room-list');
+    list.innerHTML = '';
+    if (!state.rooms.length) {
+      list.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:var(--muted)">방이 없습니다</div>';
+      return;
+    }
+    for (const room of state.rooms) {
+      const el = document.createElement('div');
+      el.className = 'room-item' + (room.id === state.currentRoomId ? ' active' : '');
+      el.dataset.roomId = room.id;
+      el.innerHTML = `
+        <div class="room-icon"></div>
+        <div style="min-width:0">
+          <div class="room-name">${escHtml(room.name)}</div>
+          <div class="room-id-label">${room.id.slice(0, 8)}…</div>
+        </div>`;
+      el.addEventListener('click', () => selectRoom(room.id, room.name));
+      list.appendChild(el);
+    }
+  }
+
+  async function createRoom() {
+    const name = $('create-room-name').value.trim();
+    if (!name) return alert('방 이름을 입력하세요.');
+    try {
+      const room = await apiFetch('/rooms', { method: 'POST', body: JSON.stringify({ name }) });
+      state.rooms = [...state.rooms, room];
+      renderRoomList();
+      $('create-room-name').value = '';
+      notify('방 생성 완료: ' + room.name);
+    } catch (e) {
+      alert('방 생성 실패: ' + e.message);
+    }
+  }
+
+  async function joinRoomById() {
+    const roomId = $('join-room-id').value.trim();
+    if (!roomId) return alert('Room ID를 입력하세요.');
+    try {
+      await apiFetch(`/rooms/${roomId}/join`, { method: 'POST' });
+      await loadRooms();
+      $('join-room-id').value = '';
+      notify('방 참가 완료');
+    } catch (e) {
+      alert('방 참가 실패: ' + e.message);
+    }
+  }
+
+  async function selectRoom(roomId, roomName) {
+    state.currentRoomId = roomId;
+    $('room-title').textContent = roomName || roomId;
+
+    // Mark active in sidebar
+    document.querySelectorAll('.room-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.roomId === roomId);
+    });
+
+    clearMessages();
+
+    // Join via WebSocket
+    if (state.socket?.connected) {
+      state.socket.emit('joinRoom', { roomId }, (ack) => {
+        if (ack?.success) {
+          $('online-dot').classList.add('online');
+          setInputEnabled(true);
+        } else {
+          alert('방 참가 실패: ' + (ack?.error || '알 수 없는 오류'));
+        }
+      });
+    }
+
+    // Load history
+    await loadMessageHistory(roomId);
+  }
+
+  async function loadMessageHistory(roomId) {
+    try {
+      const data = await apiFetch(`/rooms/${roomId}/messages?limit=50`);
+      const messages = Array.isArray(data) ? data : (data.messages || data.data || []);
+      // Store and render in chronological order
+      state.messages[roomId] = messages;
+      const list = $('message-list');
+      hideEmptyState();
+      for (const msg of messages) {
+        appendMessageEl(msg, 'history');
+      }
+      scrollToBottom();
+    } catch (e) {
+      console.error('메시지 히스토리 로드 실패:', e);
+    }
+  }
+
+  /* ─── Socket.IO ──────────────────────────────────────────── */
+  function connectSocket() {
+    if (state.socket) state.socket.disconnect();
+
+    state.socket = io(BASE, {
+      auth: { token: state.token },
+      transports: ['websocket'],
+    });
+
+    state.socket.on('connect', () => {
+      setWsStatus(true);
+      updatePresence(true);
+      startHeartbeat();
+      // Re-join current room if any
+      if (state.currentRoomId) {
+        state.socket.emit('joinRoom', { roomId: state.currentRoomId }, (ack) => {
+          if (ack?.success) {
+            $('online-dot').classList.add('online');
+            setInputEnabled(true);
+          }
+        });
+      }
+    });
+
+    state.socket.on('disconnect', () => {
+      setWsStatus(false);
+      updatePresence(false);
+      stopHeartbeat();
+      $('online-dot').classList.remove('online');
+      setInputEnabled(false);
+    });
+
+    state.socket.on('connect_error', (err) => {
+      console.error('WebSocket 연결 오류:', err.message);
+      setWsStatus(false);
+    });
+
+    state.socket.on('newMessage', (msg) => {
+      // Deduplicate by clientMsgId
+      if (msg.clientMsgId && state.seenClientMsgIds.has(msg.clientMsgId)) return;
+      if (msg.clientMsgId) state.seenClientMsgIds.add(msg.clientMsgId);
+
+      if (msg.roomId !== state.currentRoomId) return;
+
+      hideEmptyState();
+      appendMessageEl(msg, 'live');
+      scrollToBottom();
+    });
+  }
+
+  function disconnectSocket() {
+    stopHeartbeat();
+    if (state.socket) {
+      state.socket.disconnect();
+      state.socket = null;
+    }
+    setWsStatus(false);
+    updatePresence(false);
+  }
+
+  /* ─── Send Message ───────────────────────────────────────── */
+  async function sendMessage() {
+    const input = $('msg-input');
+    const content = input.value.trim();
+    if (!content || !state.currentRoomId || !state.socket?.connected) return;
+
+    const clientMsgId = crypto.randomUUID();
+    const payload = {
+      roomId: state.currentRoomId,
+      clientMsgId,
+      type: 'TEXT',
+      content,
+    };
+
+    // Optimistic render
+    const tempMsg = {
+      id: null,
+      roomId: state.currentRoomId,
+      senderId: state.userId,
+      clientMsgId,
+      type: 'TEXT',
+      content,
+      createdAt: new Date().toISOString(),
+      _ack: 'pending',
+    };
+    hideEmptyState();
+    appendMessageEl(tempMsg, 'optimistic');
+    scrollToBottom();
+
+    input.value = '';
+
+    state.socket.emit('sendMessage', payload, (ack) => {
+      updateAckStatus(clientMsgId, ack?.status || 'FAILED');
+    });
+  }
+
+  function onMsgKeydown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  /* ─── Heartbeat ──────────────────────────────────────────── */
+  function startHeartbeat() {
+    stopHeartbeat();
+    state.heartbeatTimer = setInterval(() => {
+      if (!state.socket?.connected) return;
+      state.socket.emit('heartbeat', {}, (res) => {
+        flashHeartbeat(res?.success);
+      });
+    }, 20_000);
+  }
+
+  function stopHeartbeat() {
+    if (state.heartbeatTimer) {
+      clearInterval(state.heartbeatTimer);
+      state.heartbeatTimer = null;
+    }
+    $('hb-dot').className = 'status-dot';
+    $('hb-label').textContent = '하트비트 대기';
+  }
+
+  function flashHeartbeat(success) {
+    const dot = $('hb-dot');
+    const label = $('hb-label');
+    dot.className = 'status-dot pulse';
+    label.textContent = '하트비트 전송됨';
+    setTimeout(() => {
+      dot.className = success ? 'status-dot green' : 'status-dot red';
+      label.textContent = success ? '하트비트 정상' : '하트비트 실패';
+    }, 600);
+  }
+
+  /* ─── UI Helpers ─────────────────────────────────────────── */
+  function setWsStatus(connected) {
+    $('ws-dot').className = 'status-dot ' + (connected ? 'green' : 'red');
+    $('ws-label').textContent = connected ? '연결됨' : '연결 끊김';
+  }
+
+  function updatePresence(online) {
+    $('presence-dot').className = 'status-dot ' + (online ? 'green' : '');
+    $('presence-label').textContent = online ? '온라인' : '오프라인';
+  }
+
+  function setInputEnabled(enabled) {
+    $('msg-input').disabled = !enabled;
+    $('send-btn').disabled = !enabled;
+  }
+
+  function hideEmptyState() {
+    const el = $('empty-state');
+    if (el) el.remove();
+  }
+
+  function clearMessages() {
+    const list = $('message-list');
+    list.innerHTML = '<div id="empty-state"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>메시지를 불러오는 중…</span></div>';
+    $('online-dot').classList.remove('online');
+  }
+
+  function scrollToBottom() {
+    const list = $('message-list');
+    list.scrollTop = list.scrollHeight;
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function appendMessageEl(msg, source) {
+    const isOwn = msg.senderId === state.userId;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'msg-wrapper ' + (isOwn ? 'own' : 'other');
+    if (msg.clientMsgId) wrapper.dataset.clientMsgId = msg.clientMsgId;
+
+    const ackStatus = msg._ack || (source === 'history' ? 'accepted' : 'pending');
+    const ackClass  = ackStatus === 'accepted' ? 'accepted' : ackStatus === 'pending' ? 'pending' : 'failed';
+    const ackLabel  = ackStatus === 'accepted' ? 'ACCEPTED' : ackStatus === 'pending' ? '전송 중…' : 'FAILED';
+
+    const senderLabel = isOwn ? '나' : (msg.senderEmail || msg.senderId?.slice(0, 8) || '알 수 없음');
+
+    wrapper.innerHTML = `
+      <div class="msg-sender">${escHtml(senderLabel)}</div>
+      <div class="msg-bubble">${escHtml(msg.content)}</div>
+      <div class="msg-meta">
+        <span class="msg-time">${formatTime(msg.createdAt)}</span>
+        ${isOwn ? `<span class="msg-ack ${ackClass}">${ackLabel}</span>` : ''}
+      </div>`;
+
+    $('message-list').appendChild(wrapper);
+  }
+
+  function updateAckStatus(clientMsgId, status) {
+    const wrapper = document.querySelector(`[data-client-msg-id="${clientMsgId}"]`);
+    if (!wrapper) return;
+    const ackEl = wrapper.querySelector('.msg-ack');
+    if (!ackEl) return;
+    const ok = status === 'ACCEPTED';
+    ackEl.className = 'msg-ack ' + (ok ? 'accepted' : 'failed');
+    ackEl.textContent = ok ? 'ACCEPTED' : 'FAILED';
+  }
+</script>
+</body>
+</html>

@@ -72,8 +72,8 @@ NestJS 모노레포 기반 실시간 채팅 시스템. WebSocket, Kafka, Postgre
 │  - Kafka Producer (chat.messages.v1)                        │
 │  - Kafka Consumer (chat.messages.persisted.v1 → broadcast)  │
 │  - Redis Presence (setOnline / refreshTTL / setOffline)     │
-└──────────┬─────────────────────────────────┬────────────────┘
-           │ Kafka                           │ Redis
+└──────────┬────────────────────────────────┬─────────────────┘
+           │ Kafka                          │ Redis
            │ chat.messages.v1               │ presence:user:{id}
            ▼                                │
 ┌──────────────────────┐                    │

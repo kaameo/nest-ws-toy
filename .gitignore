@@ -1,4 +1,39 @@
+# Dependencies
 node_modules/
+
+# Build
 dist/
+
+# Environment
 .env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage
+coverage/
+
+# OMC state (session-specific)
+.omc/state/
+.omc/logs/
+.omc/notepad.md
+
+# TypeScript
 *.js.map
+*.tsbuildinfo
