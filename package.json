@@ -1,0 +1,79 @@
+{
+  "name": "nest-ws-toy",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "nest build",
+    "build:gateway": "nest build chat-gateway",
+    "build:worker": "nest build chat-worker",
+    "start:gateway": "nest start chat-gateway",
+    "start:worker": "nest start chat-worker",
+    "start:gateway:dev": "nest start chat-gateway --watch",
+    "start:worker:dev": "nest start chat-worker --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@nestjs/common": "^11.1.14",
+    "@nestjs/config": "^4.0.3",
+    "@nestjs/core": "^11.1.14",
+    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/microservices": "^11.1.14",
+    "@nestjs/passport": "^11.0.5",
+    "@nestjs/platform-express": "^11.1.14",
+    "@nestjs/platform-socket.io": "^11.1.14",
+    "@nestjs/terminus": "^11.1.1",
+    "@nestjs/typeorm": "^11.0.0",
+    "@nestjs/websockets": "^11.1.14",
+    "bcrypt": "^6.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.3",
+    "ioredis": "^5.9.3",
+    "kafkajs": "^2.2.4",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "pg": "^8.18.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "socket.io": "^4.8.3",
+    "typeorm": "^0.3.28",
+    "ulid": "^3.0.2",
+    "zod": "^4.3.6"
+  },
+  "jest": {
+    "moduleFileExtensions": ["js", "json", "ts"],
+    "rootDir": ".",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "collectCoverageFrom": ["**/*.(t|j)s"],
+    "coverageDirectory": "./coverage",
+    "testEnvironment": "node",
+    "roots": ["<rootDir>/apps/", "<rootDir>/libs/"],
+    "moduleNameMapper": {
+      "^@app/common(.*)$": "<rootDir>/libs/common/src$1",
+      "^@app/db(.*)$": "<rootDir>/libs/db/src$1",
+      "^@app/redis(.*)$": "<rootDir>/libs/redis/src$1"
+    }
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.16",
+    "@nestjs/schematics": "^11.0.9",
+    "@nestjs/testing": "^11.1.14",
+    "@types/bcrypt": "^6.0.0",
+    "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.3.0",
+    "@types/passport-jwt": "^4.0.1",
+    "jest": "^30.2.0",
+    "ts-jest": "^29.4.6",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
