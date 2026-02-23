@@ -256,12 +256,17 @@ pnpm run build:worker
 ### 테스트
 
 ```bash
-# 전체 테스트
+# 단위 테스트
 pnpm run test
 
 # 커버리지 포함
 pnpm run test:cov
+
+# E2E 테스트 (docker-compose 인프라 필요)
+pnpm test:e2e
 ```
+
+E2E 테스트는 실제 PostgreSQL + Redis를 사용하며, Kafka는 mock 처리한다. `supertest`로 HTTP API, `socket.io-client`로 WebSocket 이벤트를 검증한다.
 
 ### Kafka UI
 
@@ -345,6 +350,10 @@ nest-ws-toy/
 ├── .env.example
 ├── apps/
 │   ├── chat-gateway/
+│   │   ├── test/
+│   │   │   ├── jest-e2e.json          # E2E 테스트 Jest 설정
+│   │   │   ├── app.e2e-spec.ts        # HTTP API E2E 테스트
+│   │   │   └── ws.e2e-spec.ts         # WebSocket E2E 테스트
 │   │   └── src/
 │   │       ├── main.ts
 │   │       ├── app.module.ts
