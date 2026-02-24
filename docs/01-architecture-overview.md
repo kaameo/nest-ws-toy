@@ -48,7 +48,7 @@ NestJS 모노레포 기반 실시간 채팅 시스템. NestJS + WebSocket(Socket
            │
            ▼
 ┌──────────────────────┐  ┌──────────────────┐
-│  PostgreSQL 15       │  │    Redis 7       │
+│  PostgreSQL 15       │  │    Valkey 8      │
 │  users, rooms,       │  │  presence:user:* │
 │  room_members,       │  │  (TTL 60s)       │
 │  messages            │  │                  │
@@ -92,7 +92,7 @@ nest-ws-toy/
 | 서비스 | 이미지 | 포트 | 역할 |
 |--------|--------|------|------|
 | postgres | postgres:15-alpine | 5432 | 메시지, 사용자, 방 저장 |
-| redis | redis:7-alpine | 6379 | 접속 상태(Presence) 관리 |
+| redis | valkey/valkey:8-alpine | 6379 | 접속 상태(Presence) 관리 |
 | kafka | apache/kafka:3.7.0 (KRaft) | 29092 | 메시지 이벤트 브로커 |
 | kafka-init | apache/kafka:3.7.0 | - | 토픽 자동 생성 후 종료 |
 | kafka-ui | provectuslabs/kafka-ui | 8080 | Kafka 모니터링 UI |

@@ -10,7 +10,7 @@ NestJS monorepo implementing a real-time chat system with two-tier message proce
 
 ```bash
 # Infrastructure (must be running first)
-docker compose up -d          # PostgreSQL 15, Redis 7, Kafka 3.7 (KRaft), Kafka UI
+docker compose up -d          # PostgreSQL 15, Valkey 8, Kafka 3.7 (KRaft), Kafka UI
 
 # Development
 pnpm start:gateway:dev        # chat-gateway with --watch (port 3000)
