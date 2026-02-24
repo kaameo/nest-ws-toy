@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException, ConflictException } from '@nestjs/common';
 import { RoomsService } from './rooms.service';
 import { Room, RoomMember } from '@app/db';
+import { REDIS_CLIENT } from '@app/redis';
 
 describe('RoomsService', () => {
   let service: RoomsService;
@@ -17,6 +18,13 @@ describe('RoomsService', () => {
     save: jest.fn(),
     find: jest.fn(),
     findOne: jest.fn(),
+    update: jest.fn(),
+  };
+  const mockRedis = {
+    get: jest.fn(),
+    set: jest.fn(),
+    del: jest.fn(),
+    expire: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -25,6 +33,7 @@ describe('RoomsService', () => {
         RoomsService,
         { provide: getRepositoryToken(Room), useValue: mockRoomRepo },
         { provide: getRepositoryToken(RoomMember), useValue: mockMemberRepo },
+        { provide: REDIS_CLIENT, useValue: mockRedis },
       ],
     }).compile();
     service = module.get<RoomsService>(RoomsService);
@@ -69,14 +78,26 @@ describe('RoomsService', () => {
   });
 
   describe('isMember', () => {
-    it('should return true if user is member', async () => {
+    it('should return true if user is member (cache miss)', async () => {
+      mockRedis.get.mockResolvedValue(null);
       mockMemberRepo.findOne.mockResolvedValue({ roomId: 'room-1', userId: 'user-1' });
+      mockRedis.set.mockResolvedValue('OK');
       expect(await service.isMember('room-1', 'user-1')).toBe(true);
+      expect(mockRedis.set).toHaveBeenCalledWith('membership:room-1:user-1', '1', 'EX', 30);
+    });
+
+    it('should return cached result on cache hit', async () => {
+      mockRedis.get.mockResolvedValue('1');
+      expect(await service.isMember('room-1', 'user-1')).toBe(true);
+      expect(mockMemberRepo.findOne).not.toHaveBeenCalled();
     });
 
     it('should return false if user is not member', async () => {
+      mockRedis.get.mockResolvedValue(null);
       mockMemberRepo.findOne.mockResolvedValue(null);
+      mockRedis.set.mockResolvedValue('OK');
       expect(await service.isMember('room-1', 'user-2')).toBe(false);
+      expect(mockRedis.set).toHaveBeenCalledWith('membership:room-1:user-2', '0', 'EX', 30);
     });
   });
 });

@@ -1,8 +1,10 @@
 import { z } from 'zod';
 
+const ulidRegex = /^[0-9A-HJKMNP-TV-Z]{26}$/;
+
 export const MessageQuerySchema = z.object({
-  before: z.string().optional(),
-  after: z.string().optional(),
+  before: z.string().regex(ulidRegex, 'Invalid ULID format').optional(),
+  after: z.string().regex(ulidRegex, 'Invalid ULID format').optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 

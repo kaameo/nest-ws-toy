@@ -8,6 +8,7 @@ import {
   Request,
   UsePipes,
   ParseUUIDPipe,
+  ForbiddenException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { RoomsService } from './rooms.service';
@@ -38,7 +39,14 @@ export class RoomsController {
   }
 
   @Get(':roomId/members')
-  async findMembers(@Param('roomId', ParseUUIDPipe) roomId: string) {
+  async findMembers(
+    @Param('roomId', ParseUUIDPipe) roomId: string,
+    @Request() req: any,
+  ) {
+    const isMember = await this.roomsService.isMember(roomId, req.user.userId);
+    if (!isMember) {
+      throw new ForbiddenException('Not a member of this room');
+    }
     return this.roomsService.findMembers(roomId);
   }
 }

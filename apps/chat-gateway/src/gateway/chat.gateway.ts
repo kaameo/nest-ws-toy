@@ -86,6 +86,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() data: { roomId: string },
   ): Promise<{ success: boolean; error?: string }> {
+    if (!client.user) {
+      return { success: false, error: 'Not authenticated' };
+    }
     const { roomId } = data;
     const userId = client.user.userId;
 
@@ -104,6 +107,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() data: unknown,
   ): Promise<MessageAck> {
+    if (!client.user) {
+      return { clientMsgId: '', status: 'FAILED', error: 'Not authenticated' };
+    }
+
     const parsed = SendMessageSchema.safeParse(data);
     if (!parsed.success) {
       return { clientMsgId: '', status: 'FAILED', error: 'Invalid message format' };
@@ -145,7 +152,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: AuthenticatedSocket,
   ): Promise<{ success: boolean }> {
     if (client.user) {
-      await this.presenceService.refreshTTL(client.user.userId);
+      await this.presenceService.refreshTTL(client.user.userId, client.id);
     }
     return { success: true };
   }

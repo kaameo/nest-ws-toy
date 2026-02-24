@@ -20,6 +20,7 @@ import { FanoutService, WORKER_KAFKA_PRODUCER } from './fanout.service';
             },
             producer: {
               allowAutoTopicCreation: true,
+              idempotent: true,
             },
             producerOnlyMode: true,
           },

@@ -1,8 +1,13 @@
-import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import Redis from 'ioredis';
 import { Room, RoomMember } from '@app/db';
 import { CreateRoomDto } from '@app/common';
+import { REDIS_CLIENT } from '@app/redis';
+
+const MEMBER_CACHE_TTL = 30; // seconds
+const MEMBER_CACHE_PREFIX = 'membership:';
 
 @Injectable()
 export class RoomsService {
@@ -13,6 +18,8 @@ export class RoomsService {
     private readonly roomRepository: Repository<Room>,
     @InjectRepository(RoomMember)
     private readonly memberRepository: Repository<RoomMember>,
+    @Inject(REDIS_CLIENT)
+    private readonly redis: Redis,
   ) {}
 
   async create(dto: CreateRoomDto, userId: string): Promise<Room> {
@@ -43,7 +50,9 @@ export class RoomsService {
     }
 
     const member = this.memberRepository.create({ roomId, userId });
-    return this.memberRepository.save(member);
+    const saved = await this.memberRepository.save(member);
+    await this.redis.del(`${MEMBER_CACHE_PREFIX}${roomId}:${userId}`);
+    return saved;
   }
 
   async findMyRooms(userId: string): Promise<Room[]> {
@@ -65,9 +74,29 @@ export class RoomsService {
   }
 
   async isMember(roomId: string, userId: string): Promise<boolean> {
+    const cacheKey = `${MEMBER_CACHE_PREFIX}${roomId}:${userId}`;
+    const cached = await this.redis.get(cacheKey);
+    if (cached !== null) {
+      return cached === '1';
+    }
+
     const member = await this.memberRepository.findOne({
       where: { roomId, userId },
     });
-    return member !== null;
+    const result = member !== null;
+    await this.redis.set(cacheKey, result ? '1' : '0', 'EX', MEMBER_CACHE_TTL);
+    return result;
+  }
+
+  async updateReadCursor(
+    roomId: string,
+    userId: string,
+    lastReadMessageId: string,
+  ): Promise<void> {
+    await this.memberRepository.update(
+      { roomId, userId },
+      { lastReadMessageId },
+    );
+    this.logger.debug(`Read cursor updated: user=${userId} room=${roomId} cursor=${lastReadMessageId}`);
   }
 }

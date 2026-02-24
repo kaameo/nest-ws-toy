@@ -1,8 +1,9 @@
 import { Injectable, ForbiddenException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Message, RoomMember } from '@app/db';
+import { Message } from '@app/db';
 import { MessageQueryDto, MessageResponse } from '@app/common';
+import { RoomsService } from '../rooms/rooms.service';
 
 @Injectable()
 export class MessagesService {
@@ -11,8 +12,7 @@ export class MessagesService {
   constructor(
     @InjectRepository(Message)
     private readonly messageRepository: Repository<Message>,
-    @InjectRepository(RoomMember)
-    private readonly memberRepository: Repository<RoomMember>,
+    private readonly roomsService: RoomsService,
   ) {}
 
   async getMessages(
@@ -20,7 +20,7 @@ export class MessagesService {
     userId: string,
     query: MessageQueryDto,
   ): Promise<MessageResponse[]> {
-    const isMember = await this.isMember(roomId, userId);
+    const isMember = await this.roomsService.isMember(roomId, userId);
     if (!isMember) {
       throw new ForbiddenException('Not a member of this room');
     }
@@ -60,23 +60,12 @@ export class MessagesService {
     userId: string,
     lastReadMessageId: string,
   ): Promise<void> {
-    const isMember = await this.isMember(roomId, userId);
+    const isMember = await this.roomsService.isMember(roomId, userId);
     if (!isMember) {
       throw new ForbiddenException('Not a member of this room');
     }
 
-    await this.memberRepository.update(
-      { roomId, userId },
-      { lastReadMessageId },
-    );
-
-    this.logger.debug(`Read cursor updated: user=${userId} room=${roomId} cursor=${lastReadMessageId}`);
+    await this.roomsService.updateReadCursor(roomId, userId, lastReadMessageId);
   }
 
-  private async isMember(roomId: string, userId: string): Promise<boolean> {
-    const member = await this.memberRepository.findOne({
-      where: { roomId, userId },
-    });
-    return member !== null;
-  }
 }

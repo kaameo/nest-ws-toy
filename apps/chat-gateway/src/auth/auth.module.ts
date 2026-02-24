@@ -7,8 +7,6 @@ import { User } from '@app/db';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
-import { WsJwtGuard } from './ws-jwt.guard';
-
 @Module({
   imports: [
     TypeOrmModule.forFeature([User]),
@@ -23,7 +21,7 @@ import { WsJwtGuard } from './ws-jwt.guard';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, WsJwtGuard],
-  exports: [AuthService, JwtModule, WsJwtGuard],
+  providers: [AuthService, JwtStrategy],
+  exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

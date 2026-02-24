@@ -33,8 +33,14 @@ export class PresenceService {
     }
   }
 
-  async refreshTTL(userId: string): Promise<void> {
+  async refreshTTL(userId: string, socketId?: string): Promise<void> {
     const key = `${PRESENCE_KEY_PREFIX}${userId}`;
+    if (socketId) {
+      const exists = await this.redis.hexists(key, socketId);
+      if (exists) {
+        await this.redis.hset(key, socketId, JSON.stringify({ refreshedAt: new Date().toISOString() }));
+      }
+    }
     await this.redis.expire(key, PRESENCE_TTL);
   }
 
