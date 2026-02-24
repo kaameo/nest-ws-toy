@@ -7,6 +7,7 @@ import { KAFKA_CLIENT_ID, KAFKA_CONSUMER_GROUPS } from '@app/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.enableCors({ origin: '*' });
   app.enableShutdownHooks();
 
   const configService = app.get(ConfigService);
@@ -21,6 +22,7 @@ async function bootstrap() {
       },
       consumer: {
         groupId: KAFKA_CONSUMER_GROUPS.BROADCAST,
+        allowAutoTopicCreation: true,
       },
     },
   });

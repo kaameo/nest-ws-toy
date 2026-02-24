@@ -21,6 +21,7 @@ async function bootstrap() {
       },
       consumer: {
         groupId: KAFKA_CONSUMER_GROUPS.PERSISTOR,
+        allowAutoTopicCreation: true,
       },
     },
   });

@@ -721,6 +721,9 @@
       content,
     };
 
+    // Mark as seen for dedup before server broadcast returns
+    state.seenClientMsgIds.add(clientMsgId);
+
     // Optimistic render
     const tempMsg = {
       id: null,
