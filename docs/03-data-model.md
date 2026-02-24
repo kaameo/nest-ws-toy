@@ -85,7 +85,7 @@ erDiagram
 | `room_id` | UUID | 방 ID |
 | `sender_id` | UUID | 발신자 ID |
 | `client_msg_id` | UUID | 클라이언트 생성 중복 제거용 ID |
-| `type` | varchar(20), default 'TEXT' | 메시지 타입 (TEXT, IMAGE, SYSTEM) |
+| `type` | varchar(20), default 'TEXT' | 메시지 타입 (TEXT, IMAGE) |
 | `content` | text | 메시지 내용 |
 | `created_at` | timestamp | 생성 시각 |
 

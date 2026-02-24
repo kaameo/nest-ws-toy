@@ -83,7 +83,7 @@ nest-ws-toy/
 ├── public/
 │   └── index.html             # 채팅 테스트 클라이언트 (브라우저)
 │
-├── docker-compose.yml         # PostgreSQL, Redis, Kafka, Kafka UI
+├── docker-compose.yml         # PostgreSQL, Valkey, Kafka, Kafka UI
 └── .env                       # 환경변수
 ```
 

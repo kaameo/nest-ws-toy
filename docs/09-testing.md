@@ -66,19 +66,19 @@ const mockKafkaProducerService = {
   publish: jest.fn().mockResolvedValue(undefined),
 };
 
-// Redis mock (PresenceService)
-const mockRedis = {
+// Redis mock (PresenceService - Hash 기반 접속 상태)
+const mockRedisPresence = {
   hset: jest.fn(),
   hdel: jest.fn(),
   hgetall: jest.fn(),
+  hexists: jest.fn(),
   expire: jest.fn(),
   exists: jest.fn(),
   del: jest.fn(),
-  hexists: jest.fn(),
 };
 
-// Redis mock (RoomsService - membership cache)
-const mockRedis = {
+// Redis mock (RoomsService - membership 캐시)
+const mockRedisMembership = {
   get: jest.fn(),
   set: jest.fn(),
   del: jest.fn(),

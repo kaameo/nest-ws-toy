@@ -39,7 +39,7 @@ TypeOrmModule.forRootAsync({
 
 ```typescript
 // 특정 엔티티를 사용하는 모듈에서만 등록
-TypeOrmModule.forFeature([Message, RoomMember])
+TypeOrmModule.forFeature([Message])
 ```
 
 ## 2. 의존성 주입 (DI)

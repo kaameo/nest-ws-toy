@@ -39,7 +39,7 @@ handleConnection(client: AuthenticatedSocket) {
 
   const payload = this.jwtService.verify(token, { secret });
   client.user = { userId: payload.sub, email: payload.email };
-  this.presenceService.setOnline(client.user.userId, client.id);
+  this.presenceService.setOnline(client.user.userId, this.serverId, client.id);
 }
 ```
 
@@ -118,7 +118,7 @@ TTL:   60초
 |--------|------|------------|
 | 연결 | 온라인 등록 | `HSET` + `EXPIRE 60s` |
 | 연결 해제 | 오프라인 처리 | `HDEL` (남은 소켓 없으면 키 삭제) |
-| 하트비트 (20초) | TTL 갱신 | `EXPIRE 60s` |
+| 하트비트 (20초) | TTL 갱신 + hash entry 업데이트 | `HEXISTS` + `HSET` + `EXPIRE 60s` |
 
 ### 멀티 디바이스 지원
 
