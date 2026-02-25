@@ -1,6 +1,6 @@
 # nest-ws-toy
 
-NestJS 모노레포 기반 실시간 채팅 시스템. WebSocket, Kafka, PostgreSQL, Redis를 조합해 **at-least-once 메시지 전달**을 보장한다. 토이 프로젝트이지만 운영 가능한 품질을 목표로 한다.
+NestJS 모노레포 기반 실시간 채팅 시스템. WebSocket, Kafka, PostgreSQL, Valkey를 조합해 **at-least-once 메시지 전달**을 보장한다. 토이 프로젝트이지만 운영 가능한 품질을 목표로 한다.
 
 ---
 
@@ -15,6 +15,7 @@ NestJS 모노레포 기반 실시간 채팅 시스템. WebSocket, Kafka, Postgre
 7. [API 엔드포인트](#7-api-엔드포인트)
 8. [WebSocket 이벤트](#8-websocket-이벤트)
 9. [프로젝트 구조](#9-프로젝트-구조)
+10. [상세 문서](#10-상세-문서)
 
 ---
 
@@ -47,7 +48,7 @@ NestJS 모노레포 기반 실시간 채팅 시스템. WebSocket, Kafka, Postgre
 | 프레임워크 | NestJS (Monorepo) | ^11 |
 | ORM | TypeORM | ^0.3 |
 | DB | PostgreSQL | 15 |
-| Cache/Presence | Redis (ioredis) | ^5 |
+| Cache/Presence | Valkey 8 (ioredis) | ^5 |
 | 메시지 큐 | Kafka (KRaft, KafkaJS) | 3.7 |
 | 실시간 통신 | Socket.IO | ^4 |
 | 입력 검증 | Zod | ^4 |
@@ -87,7 +88,7 @@ NestJS 모노레포 기반 실시간 채팅 시스템. WebSocket, Kafka, Postgre
            │ TypeORM                        │ ioredis
            ▼                                ▼
 ┌──────────────────┐             ┌──────────────────┐
-│   PostgreSQL 15  │             │    Redis 7       │
+│   PostgreSQL 15  │             │    Valkey 8      │
 │  users           │             │  presence keys   │
 │  rooms           │             │  (TTL 60s)       │
 │  room_members    │             └──────────────────┘
@@ -268,9 +269,12 @@ pnpm test:e2e
 
 E2E 테스트는 실제 PostgreSQL + Redis를 사용하며, Kafka는 mock 처리한다. `supertest`로 HTTP API, `socket.io-client`로 WebSocket 이벤트를 검증한다.
 
-### Kafka UI
+### 관리 UI
 
-브라우저에서 `http://localhost:8080`으로 접속해 토픽과 메시지를 확인할 수 있다.
+| UI | URL | 용도 |
+|----|-----|------|
+| Kafka UI | `http://localhost:8080` | 토픽, 메시지, 컨슈머 그룹 모니터링 |
+| Redis Commander | `http://localhost:8081` | Valkey 키 브라우징, 데이터 관리 |
 
 ---
 
@@ -394,3 +398,20 @@ nest-ws-toy/
 | `apps/chat-worker/src/fanout/fanout.service.ts` | persisted 이벤트 발행 |
 | `libs/db/src/entities/message.entity.ts` | ULID PK, unique constraint 정의 |
 | `libs/common/src/events/` | Kafka 이벤트 스키마 (v1) |
+
+---
+
+## 10. 상세 문서
+
+| # | 문서 | 내용 |
+|---|------|------|
+| 01 | [Architecture Overview](docs/01-architecture-overview.md) | 시스템 구성도, Gateway/Worker 독립 구조, 스케일링 |
+| 02 | [Message Flow](docs/02-message-flow.md) | 메시지 시퀀스, Kafka 토픽 설계, 이벤트 스키마 |
+| 03 | [Data Model](docs/03-data-model.md) | TypeORM 엔티티, 테이블 관계, 인덱스 |
+| 04 | [WebSocket Guide](docs/04-websocket-guide.md) | Socket.IO 인증, 이벤트, Presence, 브로드캐스트 |
+| 05 | [API Reference](docs/05-api-reference.md) | REST API 엔드포인트 상세 |
+| 06 | [NestJS Patterns](docs/06-nestjs-patterns.md) | DI, 동적 모듈, Guard, Pipe, 마이크로서비스 패턴 |
+| 07 | [Design Decisions](docs/07-design-decisions.md) | 아키텍처 결정 근거 |
+| 08 | [Improvements](docs/08-improvements.md) | 개선 이력 및 향후 과제 |
+| 09 | [Testing](docs/09-testing.md) | 테스트 전략, mock 패턴, 커버리지 |
+| 10 | [Redis Keys](docs/10-redis-keys.md) | Valkey 키 구조, 자료형, TTL, 저장 예시 |
