@@ -32,6 +32,7 @@ chat-gateway BroadcastController
 | 7 | [07-operational.md](./07-operational.md) | Health Check, Docker, 인프라 | ⭐⭐ |
 | 참조 | [08-architecture-decisions.md](./08-architecture-decisions.md) | 설계 결정 및 트레이드오프 | - |
 | 참조 | [09-concept-index.md](./09-concept-index.md) | NestJS 개념 인덱스 | - |
+| 참조 | [10-delivery-guarantees.md](./10-delivery-guarantees.md) | 메시지 전달 보장 수준 (At-Most-Once / At-Least-Once / Exactly-Once) | - |
 
 ## 읽는 순서 권장사항
 
