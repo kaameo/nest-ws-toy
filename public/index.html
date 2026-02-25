@@ -466,7 +466,8 @@
   }
 
   async function apiFetch(path, opts = {}) {
-    const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+    const headers = { ...(opts.headers || {}) };
+    if (opts.body) headers['Content-Type'] = 'application/json';
     if (state.token) headers['Authorization'] = `Bearer ${state.token}`;
     const res = await fetch(BASE + path, { ...opts, headers });
     const body = await res.json().catch(() => ({}));
