@@ -79,6 +79,73 @@ Client              Gateway                 Kafka                  Worker       
 
 **Key = roomId인 이유**: 같은 방의 메시지가 항상 같은 파티션에 들어가므로, 방 내 메시지 순서가 보장됩니다.
 
+### 왜 토픽이 2개인가?
+
+Gateway가 직접 DB에 저장하고 브로드캐스트하면 토픽 1개로 충분하지만, **쓰기와 읽기를 분리**하기 위해 2개를 사용한다.
+
+```
+chat.messages.v1           →  "저장해줘" (미확인 메시지)
+chat.messages.persisted.v1 →  "저장됐어" (DB 확정 메시지)
+```
+
+이 분리로 얻는 이점:
+
+- **Gateway는 DB에 의존하지 않음**: 메시지 수신 → Kafka 발행 → 즉시 ACK. DB 장애가 WebSocket 응답 지연으로 이어지지 않음
+- **Worker 독립 스케일링**: DB 쓰기 부하가 커지면 Worker만 증설
+- **브로드캐스트 신뢰성**: `persisted.v1`에 담긴 메시지는 DB에 확정된 것이므로, 클라이언트에 전달 후 조회해도 항상 존재
+
+### chat.messages.v1 (미확인 메시지)
+
+**방향**: Gateway → Worker
+
+**의미**: 클라이언트가 보낸 메시지. 아직 DB에 저장되지 않은 상태.
+
+**이벤트 스키마** (`MessageCreatedEvent`):
+
+```typescript
+{
+  eventId: string      // 이벤트 고유 ID (UUID)
+  roomId: string       // 방 ID (파티션 키로도 사용)
+  senderId: string     // 발신자 ID
+  clientMsgId: string  // 클라이언트가 생성한 중복 제거용 ID
+  messageType: 'TEXT' | 'IMAGE' | 'SYSTEM'
+  content: string      // 메시지 내용
+  producedAt: string   // Gateway에서 발행한 시각 (ISO 8601)
+}
+```
+
+**소스**: `libs/common/src/events/message-created.event.ts`
+
+### chat.messages.persisted.v1 (확정 메시지)
+
+**방향**: Worker → Gateway
+
+**의미**: DB에 저장 완료된 메시지. ULID 기반 `messageId`와 DB 타임스탬프가 부여된 상태.
+
+**이벤트 스키마** (`MessagePersistedEvent`):
+
+```typescript
+{
+  messageId: string    // DB에서 생성된 ULID (시간순 정렬 가능)
+  roomId: string       // 방 ID
+  senderId: string     // 발신자 ID
+  clientMsgId: string  // 원본 클라이언트 메시지 ID
+  messageType: string  // 메시지 타입
+  content: string      // 메시지 내용
+  createdAt: string    // DB INSERT 시각 (ISO 8601)
+}
+```
+
+**소스**: `libs/common/src/events/message-persisted.event.ts`
+
+### 두 이벤트의 차이점
+
+| 필드 | `MessageCreatedEvent` | `MessagePersistedEvent` |
+|------|----------------------|------------------------|
+| ID | `eventId` (이벤트 추적용) | `messageId` (DB 레코드 ULID) |
+| 시각 | `producedAt` (Gateway 발행 시점) | `createdAt` (DB 저장 시점) |
+| 상태 | 미확인 (DB 저장 전) | 확정 (DB 저장 완료) |
+
 ## 신뢰성 보장
 
 ### At-Least-Once Delivery

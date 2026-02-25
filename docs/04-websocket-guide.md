@@ -15,14 +15,16 @@ Socket.IO 기반 WebSocket 게이트웨이. 실시간 메시지 전송, 방 참�
 
 ## 연결 인증
 
-```
-Client                          Gateway
-  │                                │
-  │── io(URL, { auth: { token } }) ──>│
-  │                                │── JWT 검증 (JwtService.verify)
-  │                                │── client.user = { userId, email }
-  │                                │── presenceService.setOnline()
-  │<── connect ────────────────────│
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant G as Gateway
+
+    C->>G: io(URL, { auth: { token } })
+    G->>G: JWT 검증 (JwtService.verify)
+    G->>G: client.user = { userId, email }
+    G->>G: presenceService.setOnline()
+    G-->>C: connect
 ```
 
 **인증 방식**: 연결 시점에 한 번만 JWT 검증. 이후 모든 메시지는 `client.user`를 신뢰.
