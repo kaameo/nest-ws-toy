@@ -6,6 +6,8 @@ import * as bcrypt from 'bcrypt';
 import { User } from '@app/db';
 import { RegisterDto, LoginDto } from '@app/common';
 
+const BCRYPT_SALT_ROUNDS = 10;
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -22,7 +24,7 @@ export class AuthService {
       throw new ConflictException('Email already registered');
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_SALT_ROUNDS);
     const user = this.userRepository.create({
       email: dto.email,
       passwordHash,
