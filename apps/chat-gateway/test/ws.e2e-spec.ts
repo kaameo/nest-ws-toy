@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import {
+  FastifyAdapter,
+  NestFastifyApplication,
+} from '@nestjs/platform-fastify';
 import * as request from 'supertest';
 import { io, Socket } from 'socket.io-client';
 import { DataSource } from 'typeorm';
@@ -25,9 +29,12 @@ describe('WebSocket (e2e)', () => {
       .useValue(mockKafkaProducer)
       .compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication<NestFastifyApplication>(
+      new FastifyAdapter(),
+    );
     dataSource = moduleFixture.get(DataSource);
     await app.init();
+    await (app as NestFastifyApplication).getHttpAdapter().getInstance().ready();
     await app.listen(0); // random port
     const url = await app.getUrl();
     port = parseInt(new URL(url).port, 10);

@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import {
+  FastifyAdapter,
+  NestFastifyApplication,
+} from '@nestjs/platform-fastify';
 import * as request from 'supertest';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
@@ -22,9 +26,12 @@ describe('ChatGateway (e2e)', () => {
       .useValue(mockKafkaProducer)
       .compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication<NestFastifyApplication>(
+      new FastifyAdapter(),
+    );
     dataSource = moduleFixture.get(DataSource);
     await app.init();
+    await (app as NestFastifyApplication).getHttpAdapter().getInstance().ready();
   });
 
   afterAll(async () => {

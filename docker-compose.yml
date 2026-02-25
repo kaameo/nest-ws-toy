@@ -79,16 +79,5 @@ services:
     ports:
       - "8080:8080"
 
-  redis-commander:
-    image: rediscommander/redis-commander:latest
-    container_name: chat-redis-commander
-    depends_on:
-      redis:
-        condition: service_healthy
-    environment:
-      REDIS_HOSTS: local:redis:6379
-    ports:
-      - "8081:8081"
-
 volumes:
   postgres_data:
