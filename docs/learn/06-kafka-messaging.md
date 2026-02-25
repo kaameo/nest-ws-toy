@@ -400,6 +400,16 @@ Kafka의 at-least-once 보장과 네트워크 재시도로 인해 같은 메시�
 두 번째 수신 (중복): INSERT 무시 → persisted: false → fanout 생략
 ```
 
+> **주의: DB 멱등성은 end-to-end exactly-once가 아닙니다**
+>
+> 현재 구현은 DB 레벨에서 중복 저장을 방지하지만, 전체 파이프라인에는 3가지 갭이 존재합니다:
+>
+> 1. **autoCommit 미비활성화**: consumer `autoCommit: true` (기본값)으로 인해 DB INSERT 전에 offset이 커밋될 수 있습니다. 크래시 시 메시지 유실 가능.
+> 2. **DB write ↔ fanout 비원자적**: DB 커밋 후 fanout 발행 전 크래시 시, 재처리에서 `.orIgnore()`로 `persisted: false`가 반환되어 브로드캐스트가 영구적으로 생략될 수 있습니다.
+> 3. **브로드캐스트 중복 방지 없음**: consumer 리밸런싱 시 동일 메시지가 중복 브로드캐스트될 수 있으며 클라이언트 dedup이 없습니다.
+>
+> 전체 분석 및 개선 방향은 [08-architecture-decisions.md — 섹션 2](./08-architecture-decisions.md) 를 참고하세요.
+
 **트랜잭션이 필요한 이유:**
 - Message INSERT와 Room lastMessage UPDATE가 원자적으로 실행되어야 합니다
 - Message는 저장됐는데 Room 업데이트가 실패하면 데이터 불일치가 발생합니다

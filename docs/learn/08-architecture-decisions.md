@@ -44,7 +44,7 @@ chat-worker:  비즈니스 로직 실행 (쓰기 + 부수 효과)
 
 ### 결정
 
-Kafka의 at-least-once 전송 보장과 DB 레벨의 멱등성(`ON CONFLICT DO NOTHING`)을 조합해 exactly-once 의미론을 달성했습니다.
+Kafka의 at-least-once 전송 보장과 DB 레벨의 멱등성(`ON CONFLICT DO NOTHING`)을 조합해 중복 저장을 방지합니다.
 
 ### 구현
 
@@ -63,6 +63,39 @@ insertResult = await manager
   .execute();
 ```
 
+### 실제 보장 수준 분석
+
+현재 구현이 제공하는 보장 수준은 구간별로 다릅니다:
+
+| 구간 | 보장 수준 | 구현 |
+|------|----------|------|
+| Kafka 프로듀서 → 브로커 | Exactly-once | `idempotent: true` |
+| DB INSERT | At-most-once per dedup key | `ON CONFLICT DO NOTHING` via `.orIgnore()` |
+| 전체 파이프라인 | At-least-once (불완전) | 아래 갭 참고 |
+
+### 3가지 갭
+
+**GAP 1: auto-commit 미비활성화**
+
+`apps/chat-worker/src/main.ts`와 `apps/chat-gateway/src/main.ts` consumer 설정에 `autoCommit: false`가 없습니다. KafkaJS 기본값 `autoCommit: true` (5초)로 인해 DB INSERT 완료 전 offset이 커밋될 수 있습니다. 크래시 시 메시지 유실이 발생합니다.
+
+**GAP 2: DB write ↔ fanout publish 비원자적**
+
+`persistor.service.ts`에서 DB 트랜잭션 커밋 후 fanout이 별도로 실행됩니다. 크래시 시 DB에는 저장되었지만 브로드캐스트가 실행되지 않을 수 있습니다. 재처리 시 `.orIgnore()` → `persisted: false` → fanout 스킵 → 영구 미전송 상태가 됩니다.
+
+**GAP 3: 브로드캐스트 중복 방지 없음**
+
+`broadcast.controller.ts`의 `server.to().emit()`은 fire-and-forget 방식입니다. Consumer 리밸런싱 시 중복 브로드캐스트가 가능하며, 클라이언트 측 dedup이 없습니다.
+
+### 개선 방향
+
+| 개선 항목 | 난이도 | 효과 |
+|-----------|--------|------|
+| Consumer `autoCommit: false` 설정 | 낮음 | at-least-once 보장 복원 |
+| 중복 감지 시에도 fanout 재시도 | 중간 | 미전송 방지 |
+| 클라이언트 `clientMsgId` 기반 dedup | 낮음 | 중복 브로드캐스트 처리 |
+| Transactional Outbox 패턴 적용 | 높음 | DB write + fanout 원자성 확보 |
+
 ### 왜 Exactly-Once Kafka(트랜잭션 프로듀서)를 안 쓰는가?
 
 Kafka의 트랜잭션 API(`transactional.id`)는 exactly-once를 보장하지만:
@@ -77,7 +110,7 @@ DB 레벨 중복 제거가 더 단순하고 실용적입니다.
 클라이언트가 UUID를 생성해서 clientMsgId로 전송
   → 네트워크 오류로 재전송해도 같은 clientMsgId
   → DB에서 UNIQUE 위반 → ON CONFLICT DO NOTHING
-  → 딱 1회만 저장
+  → 딱 1회만 저장 (단, GAP 2로 인해 브로드캐스트는 보장 안 됨)
 ```
 
 ### 트레이드오프
@@ -87,10 +120,11 @@ DB 레벨 중복 제거가 더 단순하고 실용적입니다.
 | 구현이 단순 | 클라이언트가 UUID를 생성해야 함 |
 | DB가 진실의 단일 원천 | 중복 시 두 번째 INSERT가 무시되는 것을 명시적으로 감지해야 함 |
 | Kafka 트랜잭션 불필요 | TTL 없는 `clientMsgId`는 영구 저장 |
+| | GAP 2로 인해 DB 저장 후 브로드캐스트 누락 가능 |
 
 ---
 
-## 3. Redis 캐시-어사이드 패턴 (30초 TTL)
+## 3. Redis 캐시-어사이드(Cache-Aside) 패턴 (30초 TTL)
 
 ### 결정
 
