@@ -76,6 +76,7 @@ Producer (idempotent: true, acks: all)
 매 WebSocket 이벤트(`joinRoom`, `sendMessage`)와 HTTP 요청(`getMessages`, `updateReadCursor`)마다 `RoomMember` 테이블을 조회하면 DB 부하가 높다.
 
 **구현**: `RoomsService.isMember()`에서 Redis GET/SET으로 30초 TTL 캐싱.
+
 - 키: `membership:{roomId}:{userId}` → 값: `'1'` 또는 `'0'`
 - `join()` 시 해당 키 삭제(캐시 무효화)
 

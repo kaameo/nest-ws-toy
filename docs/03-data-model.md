@@ -90,6 +90,7 @@ erDiagram
 | `created_at` | timestamp | 생성 시각 |
 
 **인덱스 & 제약조건**:
+
 - `UQ_messages_dedup`: UNIQUE(`room_id`, `sender_id`, `client_msg_id`) — 멱등 저장
 - `IDX_messages_room_id`: INDEX(`room_id`, `id`) — 커서 기반 페이지네이션 최적화
 

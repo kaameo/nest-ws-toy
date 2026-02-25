@@ -113,6 +113,7 @@ Gateway와 Worker는 **별도 프로세스**로 실행되며, Kafka를 통해서
 | **의존 인프라** | PostgreSQL (조회), Valkey (Presence, 멤버십 캐시), Kafka |
 
 **하는 일:**
+
 1. JWT 기반 인증 (회원가입, 로그인)
 2. 방 CRUD 및 멤버십 관리
 3. 메시지 조회 (커서 기반 페이지네이션)
@@ -133,6 +134,7 @@ Gateway와 Worker는 **별도 프로세스**로 실행되며, Kafka를 통해서
 | **의존 인프라** | PostgreSQL (쓰기), Kafka |
 
 **하는 일:**
+
 1. Kafka에서 메시지 소비
 2. Zod 스키마 검증
 3. ULID 생성 후 PostgreSQL에 멱등 저장 (`ON CONFLICT DO NOTHING`)

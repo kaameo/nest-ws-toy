@@ -14,11 +14,13 @@ Valkey에 저장되는 모든 키를 정리한 문서.
 ## 1. Presence (접속 상태)
 
 ### 키 형식
+
 ```
 presence:user:{userId}
 ```
 
 ### 자료형: Hash
+
 - **field**: `socketId`
 - **value**: JSON 문자열
 
@@ -53,6 +55,7 @@ presence:user:{userId}
 ```
 
 ### 설계 포인트
+
 - **멀티 디바이스 지원**: Hash 필드가 socketId이므로 한 유저가 여러 소켓으로 접속 가능
 - **자동 만료**: TTL 60초, 하트비트 없으면 자동 오프라인 처리
 - **완전 오프라인 감지**: 마지막 소켓 `HDEL` 후 `HLEN`이 0이면 키 삭제
@@ -62,6 +65,7 @@ presence:user:{userId}
 ## 2. Membership Cache (방 멤버십 캐시)
 
 ### 키 형식
+
 ```
 membership:{roomId}:{userId}
 ```
@@ -98,6 +102,7 @@ membership:{roomId}:{userId}
 ```
 
 ### 설계 포인트
+
 - **네거티브 캐싱**: 비멤버도 `"0"`으로 캐싱하여 DB 조회 방지
 - **짧은 TTL (30초)**: 멤버십 변경이 빠르게 반영됨
 - **참가 시 무효화**: `join()` 호출 시 `DEL`로 즉시 캐시 제거

@@ -7,6 +7,7 @@
 회원가입
 
 **Request Body** (Zod: `RegisterSchema`):
+
 ```json
 {
   "email": "user@example.com",
@@ -15,6 +16,7 @@
 ```
 
 **Response** `201`:
+
 ```json
 {
   "id": "uuid",
@@ -27,6 +29,7 @@
 로그인
 
 **Request Body** (Zod: `LoginSchema`):
+
 ```json
 {
   "email": "user@example.com",
@@ -35,6 +38,7 @@
 ```
 
 **Response** `200`:
+
 ```json
 {
   "accessToken": "eyJhbGciOiJIUzI1NiIs..."
@@ -50,6 +54,7 @@
 방 생성 (생성자 자동 참가)
 
 **Request Body** (Zod: `CreateRoomSchema`):
+
 ```json
 {
   "name": "방 이름"   // min 1, max 100
@@ -57,6 +62,7 @@
 ```
 
 **Response** `201`:
+
 ```json
 {
   "id": "uuid",
@@ -70,6 +76,7 @@
 방 참가
 
 **Response** `201`:
+
 ```json
 {
   "roomId": "uuid",
@@ -83,6 +90,7 @@
 내가 참가한 방 목록
 
 **Response** `200`:
+
 ```json
 [
   {
@@ -100,6 +108,7 @@
 방 멤버 목록
 
 **Response** `200`:
+
 ```json
 [
   {
@@ -120,6 +129,7 @@
 메시지 조회 (커서 기반 페이지네이션)
 
 **Query Params** (Zod: `MessageQuerySchema`):
+
 | 파라미터 | 타입 | 기본값 | 설명 |
 |----------|------|--------|------|
 | `limit` | number (1-100) | 50 | 조회 개수 |
@@ -127,6 +137,7 @@
 | `after` | string (ULID) | - | 이 메시지 이후 조회 (최신 방향) |
 
 **Response** `200`:
+
 ```json
 [
   {
@@ -146,6 +157,7 @@
 읽음 커서 업데이트
 
 **Request Body** (Zod: `UpdateReadCursorSchema`):
+
 ```json
 {
   "lastReadMessageId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
@@ -163,6 +175,7 @@
 DB + Redis 상태 확인
 
 **Response** `200`:
+
 ```json
 {
   "status": "ok",

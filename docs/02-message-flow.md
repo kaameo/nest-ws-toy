@@ -2,23 +2,27 @@
 
 ## 전체 시퀀스
 
-```
-Client              Gateway                 Kafka                  Worker                Gateway(broadcast)
-  │                    │                      │                      │                      │
-  │── sendMessage ────>│                      │                      │                      │
-  │                    │── Zod 검증            │                      │                      │
-  │                    │── 멤버십 확인          │                      │                      │
-  │                    │── publish ───────────>│ chat.messages.v1     │                      │
-  │<── ACCEPTED ───────│                      │                      │                      │
-  │                    │                      │── consume ──────────>│                      │
-  │                    │                      │                      │── Zod 검증            │
-  │                    │                      │                      │── INSERT (멱등)       │
-  │                    │                      │                      │── UPDATE room 메타    │
-  │                    │                      │<── publish ──────────│                      │
-  │                    │                      │ chat.messages.persisted.v1                  │
-  │                    │                      │                      │────── consume ──────>│
-  │                    │                      │                      │                      │── Zod 검증
-  │<── newMessage ─────│<───────────── server.to(roomId).emit ─────────────────────────────│
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant G as Gateway
+    participant K as Kafka
+    participant W as Worker
+    participant GB as Gateway (broadcast)
+
+    C->>G: sendMessage (WS)
+    G->>G: Zod 검증 + 멤버십 확인
+    G->>K: publish chat.messages.v1
+    G-->>C: { status: ACCEPTED }
+
+    K->>W: consume chat.messages.v1
+    W->>W: Zod 검증
+    W->>W: INSERT (멱등) + UPDATE room 메타
+    W->>K: publish chat.messages.persisted.v1
+
+    K->>GB: consume chat.messages.persisted.v1
+    GB->>GB: Zod 검증
+    GB->>C: newMessage (server.to(roomId).emit)
 ```
 
 ## 단계별 상세
@@ -31,6 +35,7 @@ Client              Gateway                 Kafka                  Worker       
 2. `SendMessageSchema`로 Zod 검증 (roomId, clientMsgId, type, content)
 3. `roomsService.isMember()`로 방 멤버십 확인
 4. `MessageCreatedEvent` 구성:
+
    ```typescript
    {
      eventId: randomUUID(),     // 이벤트 고유 ID
@@ -42,6 +47,7 @@ Client              Gateway                 Kafka                  Worker       
      producedAt: new Date().toISOString(),
    }
    ```
+
 5. Kafka `chat.messages.v1` 토픽에 발행 (key = roomId)
 6. 클라이언트에 `{ clientMsgId, status: 'ACCEPTED' }` ACK 반환
 
@@ -64,6 +70,7 @@ Client              Gateway                 Kafka                  Worker       
 1. `BroadcastController`가 `chat.messages.persisted.v1` 토픽에서 이벤트 수신
 2. `MessagePersistedEventSchema`로 Zod 검증
 3. Socket.IO 룸에 브로드캐스트:
+
    ```typescript
    this.chatGateway.server.to(event.roomId).emit('newMessage', {
      messageId, roomId, senderId, clientMsgId, type, content, createdAt
@@ -149,14 +156,17 @@ chat.messages.persisted.v1 →  "저장됐어" (DB 확정 메시지)
 ## 신뢰성 보장
 
 ### At-Least-Once Delivery
+
 - Gateway Producer: `idempotent: true` → `acks=all` 자동 적용
 - Worker에서 에러 발생 시 `throw error`로 offset commit 방지 → 재시도
 
 ### 멱등 저장 (Deduplication)
+
 - DB 유니크 제약: `UNIQUE(room_id, sender_id, client_msg_id)`
 - `INSERT ... ON CONFLICT DO NOTHING`으로 중복 무시
 - 중복 감지 시 fanout 스킵
 
 ### 클라이언트 중복 제거
+
 - 클라이언트가 `clientMsgId`를 생성 (UUID)
 - `seenClientMsgIds` Set으로 동일 메시지의 중복 렌더링 방지
